@@ -1,5 +1,4 @@
 {
-    "manufacturer": "MazBayID",
     "type": "huy-vector-c3",
     "target": "esp32c3",
     "builds": [
