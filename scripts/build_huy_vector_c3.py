@@ -12,9 +12,12 @@ if not UPSTREAM_ROOT.is_dir():
 
 # Generate only the idle and closed-eye frames before CMake discovers board
 # sources. The resulting C++ file is compiled from the board directory.
+generator_env = os.environ.copy()
+generator_env["MOCHI_BOARD_DIR"] = str(UPSTREAM_ROOT / "main/boards/huy-vector-c3")
 subprocess.run(
     [sys.executable, str(REPO_ROOT / "scripts/generate_mochi_frames.py")],
     check=True,
+    env=generator_env,
 )
 
 os.chdir(UPSTREAM_ROOT)
