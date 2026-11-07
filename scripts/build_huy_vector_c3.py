@@ -5,7 +5,7 @@ import os
 import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-UPSTREAM_ROOT = REPO_ROOT / "upstream"
+UPSTREAM_ROOT = REPO_ROOT.parent / "upstream"
 if not UPSTREAM_ROOT.is_dir():
     raise SystemExit(f"Missing pinned upstream checkout: {UPSTREAM_ROOT}")
 
