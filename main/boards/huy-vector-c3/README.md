@@ -23,10 +23,11 @@ The OLED driver probes both I2C addresses 0x3C and 0x3D. The TTP223 inputs are c
 
 ## Button behavior
 
-- Prev: decrease speaker volume by 5.
-- Next: increase speaker volume by 5.
+- Prev click: decrease speaker volume by 5.
+- Hold Prev for 1.2 seconds: enter Wi-Fi configuration mode.
+- Next click: increase speaker volume by 5.
 - **OK: always-on Push-to-Talk.** Press and hold to start listening; release to stop listening and submit the captured speech for an AI response.
-- OK click and long-press actions are intentionally unused, so a long hold cannot accidentally enter Wi-Fi configuration mode or toggle the conversation state.
+- OK click and long-press actions are intentionally unused, so a long hold cannot accidentally toggle conversation or enter Wi-Fi configuration mode.
 
 ## Audio
 
