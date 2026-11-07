@@ -29,6 +29,18 @@ The OLED driver probes both I2C addresses 0x3C and 0x3D. The TTP223 inputs are c
 - **OK: always-on Push-to-Talk.** Press and hold to start listening; release to stop listening and submit the captured speech for an AI response.
 - OK click and long-press actions are intentionally unused, so a long hold cannot accidentally toggle conversation or enter Wi-Fi configuration mode.
 
+## Mochi OLED face
+
+The 128x64 SSD1306 uses a lightweight LVGL canvas overlay while the device is idle. It shows the neutral Dirgamochi pose and performs a short automatic blink at randomized intervals. When XiaoZhi leaves the idle state (listening, speaking, Wi-Fi setup, notifications, or other activity), the overlay hides and the normal upstream XiaoZhi display is shown again.
+
+The source assets are kept as `assets/faces/mochi_0.zip` and `assets/faces/mochi_2.zip`. The build-time generator extracts only two frames:
+- `mochi_0.zip`, first numbered PNG: neutral idle pose.
+- `mochi_2.zip`, ninth numbered PNG (`009_mochi_3.png)): closed-eye blink pose.
+
+The generator converts these images to 98x64, 1-bit MSB-first bitmaps. Only 1,664 bitmap bytes are compiled into firmware; the ZIP archives are build inputs and are not embedded. A 98x64 RGB565 LVGL canvas uses about 12.3 KiB of RAM while the idle overlay is active. Full listening/thinking/speaking sprite sequences are not included in this first integration because the uploaded source set contains only the neutral and blink assets.
+
+The workflow installs Pillow and runs `scripts/generate_mochi_frames.py` before CMake configures the board sources. Generated `mochi_face_frames.h/.cc` files are build outputs and should not be committed.
+
 ## Wake-word configuration
 
 Standalone ESP WakeNet is disabled for this board with `CONFIG_USE_ESP_WAKE_WORD=n`. The device is controlled by the physical Push-to-Talk button, so it does not need a wake-word model. This also prevents the lite audio engine from treating a missing standalone model partition as a fatal initialization error. It does **not** disable microphone capture or PTT audio submission.
