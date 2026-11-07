@@ -97,6 +97,19 @@ def patch_wifi_component() -> None:
         "this_->max_tx_power_ = static_cast<int8_t>(std::max(8, std::min(40, max_tx_power->valueint)));",
         1,
     )
+    old_ap_close = (
+        "        nvs_close(nvs);\n    }\n}\n\nvoid WifiConfigurationAp::StartWebServer()"
+    )
+    new_ap_close = (
+        "        nvs_close(nvs);\n    }\n"
+        "    max_tx_power_ = std::max<int8_t>(8, std::min<int8_t>(max_tx_power_, 40));\n"
+        "    ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(max_tx_power_));\n"
+        "}\n\nvoid WifiConfigurationAp::StartWebServer()"
+    )
+    if ap.count(old_ap_close) != 1:
+        raise RuntimeError("Unexpected Wi-Fi configuration AP startup tail")
+    ap = ap.replace(old_ap_close, new_ap_close, 1)
+
     ap_path.write_text(ap, encoding="utf-8")
     print(f"Applied Wi-Fi TX power ceiling to {component.name} (40 quarter-dBm units).")
 
