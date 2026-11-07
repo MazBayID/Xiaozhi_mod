@@ -25,9 +25,8 @@ The OLED driver probes both I2C addresses 0x3C and 0x3D. The TTP223 inputs are c
 
 - Prev: decrease speaker volume by 5.
 - Next: increase speaker volume by 5.
-- OK click: toggle the XiaoZhi conversation state.
-- OK long press: enter Wi-Fi configuration mode.
-- If press-to-talk mode is enabled through the built-in MCP tool, holding OK starts listening and releasing it stops listening.
+- **OK: always-on Push-to-Talk.** Press and hold to start listening; release to stop listening and submit the captured speech for an AI response.
+- OK click and long-press actions are intentionally unused, so a long hold cannot accidentally enter Wi-Fi configuration mode or toggle the conversation state.
 
 ## Audio
 
