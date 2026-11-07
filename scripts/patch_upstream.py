@@ -62,6 +62,14 @@ def main() -> None:
         "add Huy Vector C3 CMake board mapping",
     )
 
+    manifest = source / "main/idf_component.yml"
+    replace_once(
+        manifest,
+        "  78/esp-wifi-connect: ~3.3.1",
+        "  78/esp-wifi-connect: ==3.3.1",
+        "pin esp-wifi-connect to the version matched by the RF power patch",
+    )
+
     print("Pinned XiaoZhi source patched for Huy Vector C3.")
 
 
