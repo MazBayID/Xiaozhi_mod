@@ -4,6 +4,11 @@
 #include "application.h"
 #include "button.h"
 #include "config.h"
+#include "mochi_face_frames.h"
+
+#include <lvgl.h>
+#include <esp_timer.h>
+#include <esp_random.h>
 
 #include <driver/i2c_master.h>
 #include <esp_lcd_panel_io.h>
@@ -14,6 +19,127 @@
 #include <algorithm>
 
 #define TAG "HuyVectorC3Board"
+
+namespace {
+alignas(4) uint8_t mochi_canvas_buffer[MOCHI_FACE_WIDTH * MOCHI_FACE_HEIGHT * 2];
+}
+
+// The LVGL canvas is an overlay on the existing XiaoZhi UI. It is shown only
+// while idle; normal listening/speaking/configuration screens remain upstream.
+class MochiOledDisplay : public OledDisplay {
+public:
+    using OledDisplay::OledDisplay;
+
+    ~MochiOledDisplay() override {
+        DisplayLockGuard lock(this);
+        if (face_timer_ != nullptr) {
+            lv_timer_delete(face_timer_);
+            face_timer_ = nullptr;
+        }
+        if (face_canvas_ != nullptr) {
+            lv_obj_delete(face_canvas_);
+            face_canvas_ = nullptr;
+        }
+    }
+
+    void SetupUI() override {
+        OledDisplay::SetupUI();
+        DisplayLockGuard lock(this);
+        if (!lock || height() != 64 || face_canvas_ != nullptr) {
+            return;
+        }
+
+        face_canvas_ = lv_canvas_create(lv_screen_active());
+        lv_canvas_set_buffer(face_canvas_, mochi_canvas_buffer,
+                             MOCHI_FACE_WIDTH, MOCHI_FACE_HEIGHT,
+                             LV_COLOR_FORMAT_RGB565);
+        lv_obj_set_pos(face_canvas_, (width() - MOCHI_FACE_WIDTH) / 2, 0);
+        lv_obj_set_style_border_width(face_canvas_, 0, 0);
+        lv_obj_set_style_pad_all(face_canvas_, 0, 0);
+        lv_canvas_fill_bg(face_canvas_, lv_color_black(), LV_OPA_COVER);
+        lv_obj_add_flag(face_canvas_, LV_OBJ_FLAG_HIDDEN);
+        face_timer_ = lv_timer_create(OnFaceTimer, 80, this);
+        ESP_LOGI(TAG, "Mochi idle face overlay initialized");
+    }
+
+    void SetPowerSaveMode(bool on) override {
+        display_enabled_ = !on;
+        OledDisplay::SetPowerSaveMode(on);
+    }
+
+private:
+    lv_obj_t* face_canvas_ = nullptr;
+    lv_timer_t* face_timer_ = nullptr;
+    bool display_enabled_ = true;
+    bool idle_visible_ = false;
+    bool blink_active_ = false;
+    uint32_t next_blink_at_ = 0;
+    uint32_t blink_until_ = 0;
+
+    static void OnFaceTimer(lv_timer_t* timer) {
+        auto* self = static_cast<MochiOledDisplay*>(lv_timer_get_user_data(timer));
+        if (self != nullptr) {
+            self->TickFace();
+        }
+    }
+
+    static uint32_t NowMs() {
+        return static_cast<uint32_t>(esp_timer_get_time() / 1000ULL);
+    }
+
+    void DrawFrame(const uint8_t* bitmap) {
+        lv_canvas_fill_bg(face_canvas_, lv_color_black(), LV_OPA_COVER);
+        for (int y = 0; y < MOCHI_FACE_HEIGHT; ++y) {
+            const int row = y * MOCHI_FACE_ROW_BYTES;
+            for (int x = 0; x < MOCHI_FACE_WIDTH; ++x) {
+                const uint8_t mask = static_cast<uint8_t>(0x80U >> (x & 7));
+                if ((bitmap[row + (x >> 3)] & mask) != 0) {
+                    lv_canvas_set_px(face_canvas_, x, y, lv_color_white(), LV_OPA_COVER);
+                }
+            }
+        }
+    }
+
+    void TickFace() {
+        if (face_canvas_ == nullptr) {
+            return;
+        }
+
+        const bool should_show =
+            display_enabled_ &&
+            Application::GetInstance().GetDeviceState() == kDeviceStateIdle;
+        if (!should_show) {
+            if (idle_visible_) {
+                lv_obj_add_flag(face_canvas_, LV_OBJ_FLAG_HIDDEN);
+                idle_visible_ = false;
+                blink_active_ = false;
+            }
+            return;
+        }
+
+        const uint32_t now = NowMs();
+        if (!idle_visible_) {
+            DrawFrame(kMochiIdleFrame);
+            lv_obj_remove_flag(face_canvas_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(face_canvas_);
+            idle_visible_ = true;
+            blink_active_ = false;
+            next_blink_at_ = now + 2500U + (esp_random() % 3500U);
+            return;
+        }
+
+        if (blink_active_ && static_cast<int32_t>(now - blink_until_) >= 0) {
+            DrawFrame(kMochiIdleFrame);
+            blink_active_ = false;
+            next_blink_at_ = now + 2800U + (esp_random() % 3800U);
+        } else if (!blink_active_ &&
+                   static_cast<int32_t>(now - next_blink_at_) >= 0) {
+            DrawFrame(kMochiBlinkFrame);
+            blink_active_ = true;
+            blink_until_ = now + 140U;
+        }
+    }
+};
 
 class HuyVectorC3Board : public WifiBoard {
 private:
@@ -117,7 +243,7 @@ private:
         }
 
         ESP_LOGI(TAG, "SSD1306 initialized at 0x%02X", address);
-        display_ = new OledDisplay(
+        display_ = new MochiOledDisplay(
             display_io_,
             display_panel_,
             DISPLAY_WIDTH,
