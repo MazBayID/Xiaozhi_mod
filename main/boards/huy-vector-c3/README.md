@@ -29,6 +29,10 @@ The OLED driver probes both I2C addresses 0x3C and 0x3D. The TTP223 inputs are c
 - **OK: always-on Push-to-Talk.** Press and hold to start listening; release to stop listening and submit the captured speech for an AI response.
 - OK click and long-press actions are intentionally unused, so a long hold cannot accidentally toggle conversation or enter Wi-Fi configuration mode.
 
+## Wake-word configuration
+
+Standalone ESP WakeNet is disabled for this board with `CONFIG_USE_ESP_WAKE_WORD=n`. The device is controlled by the physical Push-to-Talk button, so it does not need a wake-word model. This also prevents the lite audio engine from treating a missing standalone model partition as a fatal initialization error. It does **not** disable microphone capture or PTT audio submission.
+
 ## Audio
 
 The board uses upstream NoAudioCodecDuplex at 24 kHz. BCLK and WS are shared between the INMP441 and MAX98357A; the upstream driver reads the left I2S slot. Tie the INMP441 L/R pin to GND. The MAX98357A SD/EN pin must be held at its enabled level according to the module wiring.
