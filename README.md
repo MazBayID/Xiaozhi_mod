@@ -15,7 +15,7 @@ Custom ESP32-C3 SuperMini target reconstructed from the supplied firmware binary
 - Display: SSD1306, 128×64, I2C address auto-detection at 0x3C / 0x3D
 - Audio: INMP441 + MAX98357A, full-duplex I2S, 24 kHz
 - Touch controls: three active-HIGH TTP223 outputs
-- Wi-Fi TX power ceiling: ESP-IDF argument 40 (quarter-dBm units), mapped to a supported RF level below 10 dBm
+- Wi-Fi TX power ceiling: PHY startup cap 10 dBm plus runtime cap at API value 40 (quarter-dBm units), mapped to 8.5 dBm
 
 ## Wiring reference (Mochi Mod pinout template)
 
