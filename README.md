@@ -40,9 +40,8 @@ The MAX98357A SD/EN pin must be held at its enabled level. GPIO2 is an ESP32-C3 
 
 - Prev: speaker volume −5.
 - Next: speaker volume +5.
-- OK click: toggle conversation.
-- OK long press: enter Wi-Fi configuration mode.
-- In press-to-talk mode, holding OK starts listening and releasing OK stops listening.
+- **OK (Push-to-Talk):** hold to capture speech; release to stop capture and submit the audio for an AI response. This behavior is always enabled and does not depend on an MCP setting.
+- The OK button no longer uses click/long-press actions for chat toggling or Wi-Fi configuration.
 
 ## Wi-Fi transmit-power enforcement
 
