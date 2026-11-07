@@ -4,7 +4,6 @@
 #include "application.h"
 #include "button.h"
 #include "config.h"
-#include "press_to_talk_mcp_tool.h"
 
 #include <driver/i2c_master.h>
 #include <esp_lcd_panel_io.h>
@@ -25,9 +24,7 @@ private:
 
     Button prev_button_{BUTTON_PREV_GPIO, true};
     Button next_button_{BUTTON_NEXT_GPIO, true};
-    Button ok_button_{BUTTON_OK_GPIO, true, 1200};
-
-    PressToTalkMcpTool* press_to_talk_tool_ = nullptr;
+    Button ok_button_{BUTTON_OK_GPIO, true};
 
     void InitializeDisplay() {
         const i2c_master_bus_config_t bus_config = {
@@ -130,11 +127,6 @@ private:
         );
     }
 
-    void InitializeTools() {
-        press_to_talk_tool_ = new PressToTalkMcpTool();
-        press_to_talk_tool_->Initialize();
-    }
-
     void InitializeButtons() {
         prev_button_.OnClick([this]() {
             if (auto* codec = GetAudioCodec()) {
@@ -148,32 +140,20 @@ private:
             }
         });
 
-        ok_button_.OnClick([this]() {
-            auto& app = Application::GetInstance();
-            if (app.GetDeviceState() == kDeviceStateStarting) {
-                EnterWifiConfigMode();
-                return;
-            }
-            if (!press_to_talk_tool_ || !press_to_talk_tool_->IsPressToTalkEnabled()) {
-                app.ToggleChatState();
-            }
-        });
-
+        // Push-to-talk is always active: press to record, release to submit.
         ok_button_.OnPressDown([this]() {
-            if (press_to_talk_tool_ && press_to_talk_tool_->IsPressToTalkEnabled()) {
-                Application::GetInstance().StartListening();
+            auto& app = Application::GetInstance();
+            if (app.GetDeviceState() == kDeviceStateIdle) {
+                ESP_LOGI(TAG, "Push-to-talk: start listening");
+                app.StartListening();
             }
         });
 
         ok_button_.OnPressUp([this]() {
-            if (press_to_talk_tool_ && press_to_talk_tool_->IsPressToTalkEnabled()) {
-                Application::GetInstance().StopListening();
-            }
-        });
-
-        ok_button_.OnLongPress([this]() {
-            if (!press_to_talk_tool_ || !press_to_talk_tool_->IsPressToTalkEnabled()) {
-                EnterWifiConfigMode();
+            auto& app = Application::GetInstance();
+            if (app.GetDeviceState() == kDeviceStateListening) {
+                ESP_LOGI(TAG, "Push-to-talk: stop listening and submit");
+                app.StopListening();
             }
         });
     }
@@ -181,7 +161,6 @@ private:
 public:
     HuyVectorC3Board() {
         InitializeDisplay();
-        InitializeTools();
         InitializeButtons();
     }
 
