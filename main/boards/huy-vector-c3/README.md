@@ -35,7 +35,7 @@ The board uses upstream NoAudioCodecDuplex at 24 kHz. BCLK and WS are shared bet
 
 ## Wi-Fi transmit power
 
-The build wrapper patches the pinned 78/esp-wifi-connect 3.3.1 component. It clamps the stored/configurable maximum to 40 quarter-dBm units and reapplies that cap on Station and configuration-AP startup. ESP-IDF maps this setting to a supported RF power level below 10 dBm. The config portal cannot raise the cap above this value.
+The build sets CONFIG_ESP_PHY_MAX_WIFI_TX_POWER=10 dBm to limit PHY startup power, then patches the pinned 78/esp-wifi-connect 3.3.1 component. It clamps stored/configurable power to 40 quarter-dBm units (mapped to 8.5 dBm) and reapplies that cap on Station and configuration-AP startup. The config portal cannot raise the cap.
 
 ## Flash and partition layout
 
