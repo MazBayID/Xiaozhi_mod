@@ -40,7 +40,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m pip install --disable-pip-version-check pillow
+          source "$IDF_PATH/export.sh"
+          python -m pip install --disable-pip-version-check pillow
 
       - name: Build firmware
         shell: bash
