@@ -66,7 +66,7 @@ The reconstruction is intended to use the upstream XiaoZhi ESP32 firmware as its
 
 - https://github.com/78/xiaozhi-esp32
 
-The exact upstream commit and SDK/toolchain requirements must be pinned before claiming a reproducible build.
+The recovered binary reports firmware version `2.5.0` and ESP-IDF `v6.1`. The matching upstream release tag is `v2.5.0`, pinned to commit `ac6deed3d8e75348475364bf40ad953c6cd48054`. This is the preferred source baseline; do not silently substitute the newer `v2.5.2` or moving `main` branch.
 
 ## Build status
 
@@ -74,7 +74,7 @@ No source-level firmware build or physical-device test has been completed for th
 
 ## Recovery plan
 
-1. Identify the upstream firmware revision closest to the surviving binary.
+1. Use upstream tag `v2.5.0` (`ac6deed3d8e75348475364bf40ad953c6cd48054`) as the source baseline matching the binary's reported version.
 2. Recreate the `HuyVectorC3Board` board definition while treating the Mochi Mod pinout strictly as a wiring template.
 3. Reconcile old binary touch-control behavior with the three supplied TTP223 labels.
 4. Restore custom behavior from binary strings, assets, and user recollection.
