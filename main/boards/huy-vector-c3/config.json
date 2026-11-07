@@ -9,7 +9,7 @@
                 "CONFIG_ESP_PHY_MAX_WIFI_TX_POWER=10",
                 "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/4m.csv\"",
                 "CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y",
-                "CONFIG_USE_ESP_WAKE_WORD=y"
+                "CONFIG_USE_ESP_WAKE_WORD=n"
             ]
         }
     ]
