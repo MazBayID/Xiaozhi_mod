@@ -1,82 +1,72 @@
-# XiaoZhi AI ESP32-C3 Reconstruction
+# XiaoZhi firmware — Huy Vector C3
 
-Reconstruction of a customized XiaoZhi AI firmware target for **ESP32-C3 SuperMini**, based on a surviving firmware binary and the supplied hardware wiring reference.
+Custom ESP32-C3 SuperMini target reconstructed from the supplied firmware binary and wiring reference, using the original upstream XiaoZhi source.
 
-> Status: source reconstruction in progress. The old source repository was lost. A matching build and physical-device test have not yet been completed.
+**Identity note:** “Mochi Mod” is only the name of the supplied pinout template. It is not the board name or firmware identity. The reconstructed board class is HuyVectorC3Board; the firmware board type and build variant are huy-vector-c3.
 
-## Project identity
-
-- Firmware family: XiaoZhi AI
-- Internal board identifier found in the surviving binary: `HuyVectorC3Board`
-- Target hardware being reconstructed: ESP32-C3 SuperMini
-- **Mochi Mod is only the name of the supplied pinout template.** It is not the board identifier or firmware name.
-
-## Hardware
+## Current target
 
 - MCU: ESP32-C3 SuperMini
-- Microphone: INMP441
-- Audio amplifier: MAX98357A
-- Touch inputs: three TTP223 modules/outputs
-- Display: I2C OLED; binary contains strings indicating SSD1306 128x64 support
+- Flash: **4 MB**
+- Upstream XiaoZhi: v2.5.0
+- Pinned upstream commit: ac6deed3d8e75348475364bf40ad953c6cd48054
+- ESP-IDF: 6.1
+- Firmware language: Indonesian (id-ID)
+- Display: SSD1306, 128×64, I2C address auto-detection at 0x3C / 0x3D
+- Audio: INMP441 + MAX98357A, full-duplex I2S, 24 kHz
+- Touch controls: three active-HIGH TTP223 outputs
+- Wi-Fi TX power ceiling: ESP-IDF argument 40 (quarter-dBm units), mapped to a supported RF level below 10 dBm
 
-## Mochi Mod pinout template
+## Wiring reference (Mochi Mod pinout template)
 
-The following wiring was supplied as a reference template. It is not yet independently verified against the old source code or physical board.
-
-| Module | Signal | ESP32-C3 GPIO |
+| Module | Signal | GPIO |
 |---|---|---:|
-| INMP441 | SCK | GPIO1 |
-| INMP441 | WS | GPIO2 |
-| INMP441 | SD | GPIO10 |
-| MAX98357A | BCLK | GPIO1 |
-| MAX98357A | LRC | GPIO2 |
-| MAX98357A | DIN | GPIO5 |
-| TTP223 | Prev | GPIO4 |
-| TTP223 | Next | GPIO6 |
-| TTP223 | OK / Pause / Play | GPIO7 |
-| OLED | SCL | GPIO20 |
-| OLED | SDA | GPIO21 |
+| INMP441 | SCK | 1 |
+| INMP441 | WS | 2 |
+| INMP441 | SD | 10 |
+| INMP441 | L/R | GND (left slot) |
+| MAX98357A | BCLK | 1 |
+| MAX98357A | LRC | 2 |
+| MAX98357A | DIN | 5 |
+| TTP223 Prev | OUT | 4 |
+| TTP223 Next | OUT | 6 |
+| TTP223 OK / Pause / Play | OUT | 7 |
+| OLED | SCL | 20 |
+| OLED | SDA | 21 |
 
-The microphone and amplifier share I2S clock pins (GPIO1/GPIO2). Firmware must configure a compatible full-duplex/shared-clock I2S audio path.
+The MAX98357A SD/EN pin must be held at its enabled level. GPIO2 is an ESP32-C3 strapping pin; ensure the attached circuit does not force an invalid reset-time level. USB Serial/JTAG console is selected to avoid UART0 use on GPIO20/21.
 
-## Evidence recovered from the old binary
+## Button actions
 
-The supplied `.bin` was inspected for embedded strings. It contains, among others:
+- Prev: speaker volume −5.
+- Next: speaker volume +5.
+- OK click: toggle conversation.
+- OK long press: enter Wi-Fi configuration mode.
+- In press-to-talk mode, holding OK starts listening and releasing OK stops listening.
 
-- Board class/name strings: `HuyVectorC3Board`, `Huy Vector C3 initialized:`
-- Touch-control strings: `TTP223 TALK`, `TTP223 NEXT`, `TTP223 MODE`, plus messages referring to `ToggleInfoMode` and `CycleFace`
-- Display strings: `SSD1306 128x64`, I2C address probing for `0x3C` and `0x3D`
-- Audio-related string: `NoAudioCodecDuplex`
-- Framework/service strings: LVGL, WakeNet, MQTT, and WebSocket
-- Build metadata strings: firmware version `2.5.0`, ESP-IDF `v6.1`, compile timestamp `Sep 23 2026 02:14:37`
+## Wi-Fi transmit-power enforcement
 
-These are binary string observations, **not proof that each feature works** or a complete recovery of the original source. In particular, the TTP223 labels found in the binary do not yet match the supplied Prev/Next/OK naming one-to-one; the intended mapping needs to be reconciled before implementation.
+The build wrapper patches the pinned 78/esp-wifi-connect 3.3.1 component after dependency resolution. It clamps the saved value and configuration-page writes to 40 quarter-dBm units, then reapplies the limit whenever Station or configuration AP starts. This prevents a previously saved higher setting from bypassing the board's cap.
 
-## Hardware cautions
+## Build
 
-- **GPIO2 is an ESP32-C3 strapping pin.** Since it is connected to I2S WS/LRC, verify its level during reset/boot and ensure the connected modules do not prevent reliable booting. If boot becomes unreliable, investigate the WS/LRC circuit and consider a pin reassignment.
-- **GPIO20/GPIO21 are UART0 RX/TX pins by default.** OLED I2C on these pins can conflict with UART serial logging or console use. Confirm the project's console configuration.
-- Confirm the exact ESP32-C3 SuperMini board revision, OLED controller/address, and TTP223 output behavior before finalizing board configuration.
-- INMP441 L/R channel-select pin should be tied to the appropriate logic level (commonly GND for left channel); do not leave it floating.
-- Power the audio amplifier and speaker according to the MAX98357A module specifications; share ground with the ESP32.
+GitHub Actions builds the firmware automatically on pushes and pull requests to main. You can also start a build manually from the Actions tab using Build Huy Vector C3 firmware → Run workflow.
 
-## Firmware base
+The workflow checks out the exact upstream commit, overlays the board implementation, applies the Wi-Fi power patch, builds with ESP-IDF 6.1, checks the merged image against 4 MiB, and uploads:
 
-The reconstruction is intended to use the upstream XiaoZhi ESP32 firmware as its base:
+- merged-binary.bin — complete merged flash image, write at offset 0x0
+- bootloader.bin
+- partition-table.bin
+- sdkconfig
 
-- https://github.com/78/xiaozhi-esp32
+The 4 MB partition layout uses a factory application partition plus an assets partition; it does not contain two OTA app slots. The merged image must be no larger than 4,194,304 bytes.
 
-The recovered binary reports firmware version `2.5.0` and ESP-IDF `v6.1`. The matching upstream release tag is `v2.5.0`, pinned to commit `ac6deed3d8e75348475364bf40ad953c6cd48054`. This is the preferred source baseline; do not silently substitute the newer `v2.5.2` or moving `main` branch.
+## Validation status
 
-## Build status
+A successful CI build does not replace physical testing. The actual board still needs checks for boot reliability, OLED orientation, microphone capture, speaker output, touch response, Wi-Fi connection, and AI conversation.
 
-No source-level firmware build or physical-device test has been completed for this reconstructed repository. The surviving binary has been inspected, but it has not yet been proven reproducible from source.
+## Upstream
 
-## Recovery plan
-
-1. Use upstream tag `v2.5.0` (`ac6deed3d8e75348475364bf40ad953c6cd48054`) as the source baseline matching the binary's reported version.
-2. Recreate the `HuyVectorC3Board` board definition while treating the Mochi Mod pinout strictly as a wiring template.
-3. Reconcile old binary touch-control behavior with the three supplied TTP223 labels.
-4. Restore custom behavior from binary strings, assets, and user recollection.
-5. Build for ESP32-C3 and check the binary/partition layout.
-6. Flash and validate microphone, speaker, OLED, touch controls, Wi-Fi, and AI interaction on hardware.
+- XiaoZhi ESP32: https://github.com/78/xiaozhi-esp32
+- Baseline tag: v2.5.0
+- Baseline commit: ac6deed3d8e75348475364bf40ad953c6cd48054

@@ -1,0 +1,69 @@
+name: Build Huy Vector C3 firmware
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    container:
+      image: espressif/idf:v6.1
+    steps:
+      - name: Checkout firmware configuration
+        uses: actions/checkout@v4
+        with:
+          path: mod
+
+      - name: Checkout pinned XiaoZhi v2.5.0 source
+        uses: actions/checkout@v4
+        with:
+          repository: 78/xiaozhi-esp32
+          ref: ac6deed3d8e75348475364bf40ad953c6cd48054
+          path: upstream
+
+      - name: Integrate custom board
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -a mod/main/boards/huy-vector-c3 upstream/main/boards/
+          python3 mod/scripts/patch_upstream.py --source upstream
+
+      - name: Build firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+          source "$IDF_PATH/export.sh"
+          python3 mod/scripts/build_huy_vector_c3.py
+
+      - name: Validate merged image size
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE="upstream/build/merged-binary.bin"
+          test -s "$IMAGE"
+          SIZE="$(stat -c%s "$IMAGE")"
+          echo "Merged image size: $SIZE bytes"
+          if [ "$SIZE" -gt 4194304 ]; then
+            echo "Merged image exceeds the 4 MiB flash capacity" >&2
+            exit 1
+          fi
+
+      - name: Upload firmware and build metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: huy-vector-c3-\${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            upstream/build/merged-binary.bin
+            upstream/build/bootloader/bootloader.bin
+            upstream/build/partition_table/partition-table.bin
+            upstream/sdkconfig
