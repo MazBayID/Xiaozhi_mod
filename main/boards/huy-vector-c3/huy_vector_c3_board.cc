@@ -148,7 +148,8 @@ private:
         // Push-to-talk is always active: press to record, release to submit.
         ok_button_.OnPressDown([this]() {
             auto& app = Application::GetInstance();
-            if (app.GetDeviceState() == kDeviceStateIdle ||\n                app.GetDeviceState() == kDeviceStateSpeaking) {
+            if (app.GetDeviceState() == kDeviceStateIdle ||
+                app.GetDeviceState() == kDeviceStateSpeaking) {
                 ESP_LOGI(TAG, "Push-to-talk: start listening");
                 app.StartListening();
             }
