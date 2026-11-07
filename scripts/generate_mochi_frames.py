@@ -8,6 +8,7 @@ remain the editable source assets in the board directory.
 from __future__ import annotations
 
 import io
+import os
 import re
 import zipfile
 from pathlib import Path
@@ -16,7 +17,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 FACES = ROOT / "main/boards/huy-vector-c3/assets/faces"
-BOARD = ROOT / "main/boards/huy-vector-c3"
+BOARD = Path(os.environ.get("MOCHI_BOARD_DIR", ROOT / "main/boards/huy-vector-c3"))
 WIDTH = 98
 HEIGHT = 64
 ROW_BYTES = (WIDTH + 7) // 8
