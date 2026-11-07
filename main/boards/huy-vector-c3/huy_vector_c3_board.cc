@@ -22,7 +22,7 @@ private:
     esp_lcd_panel_handle_t display_panel_ = nullptr;
     Display* display_ = nullptr;
 
-    Button prev_button_{BUTTON_PREV_GPIO, true};
+    Button prev_button_{BUTTON_PREV_GPIO, true, 1200};
     Button next_button_{BUTTON_NEXT_GPIO, true};
     Button ok_button_{BUTTON_OK_GPIO, true};
 
@@ -140,10 +140,15 @@ private:
             }
         });
 
+        // Keep Wi-Fi provisioning available without stealing the PTT button.
+        prev_button_.OnLongPress([this]() {
+            EnterWifiConfigMode();
+        });
+
         // Push-to-talk is always active: press to record, release to submit.
         ok_button_.OnPressDown([this]() {
             auto& app = Application::GetInstance();
-            if (app.GetDeviceState() == kDeviceStateIdle) {
+            if (app.GetDeviceState() == kDeviceStateIdle ||\n                app.GetDeviceState() == kDeviceStateSpeaking) {
                 ESP_LOGI(TAG, "Push-to-talk: start listening");
                 app.StartListening();
             }
