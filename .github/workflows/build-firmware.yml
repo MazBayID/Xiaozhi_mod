@@ -36,6 +36,12 @@ jobs:
           cp -a mod/main/boards/huy-vector-c3 upstream/main/boards/
           python3 mod/scripts/patch_upstream.py --source upstream
 
+      - name: Install image conversion dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check pillow
+
       - name: Build firmware
         shell: bash
         run: |
