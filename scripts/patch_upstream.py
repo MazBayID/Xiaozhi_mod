@@ -107,6 +107,41 @@ def main() -> None:
         "guard protocol close and recover application state after network loss",
     )
 
+    replace_once(
+        application,
+        """    // Update the status bar immediately to show the network state
+    auto display = Board::GetInstance().GetDisplay();
+    display->UpdateStatusBar(true);
+}
+
+void Application::HandleNetworkDisconnectedEvent()""",
+        """    // Return to low-power mode only after the station is connected again.
+    if (state == kDeviceStateIdle) {
+        Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
+    }
+
+    // Update the status bar immediately to show the network state
+    auto display = Board::GetInstance().GetDisplay();
+    display->UpdateStatusBar(true);
+}
+
+void Application::HandleNetworkDisconnectedEvent()""",
+        "restore idle Wi-Fi power saving after network recovery",
+    )
+    replace_once(
+        application,
+        """void Application::HandleNetworkDisconnectedEvent() {
+    // Close current conversation when network disconnected
+    auto state = GetDeviceState();""",
+        """void Application::HandleNetworkDisconnectedEvent() {
+    // Temporarily disable aggressive Wi-Fi power saving while reconnecting.
+    Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::PERFORMANCE);
+
+    // Close current conversation when network disconnected
+    auto state = GetDeviceState();""",
+        "keep Wi-Fi responsive during station reconnection",
+    )
+
     mqtt = source / "main/protocols/mqtt_protocol.cc"
     replace_once(
         mqtt,
