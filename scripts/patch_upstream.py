@@ -107,6 +107,65 @@ def main() -> None:
         "guard protocol close and recover application state after network loss",
     )
 
+    mqtt = source / "main/protocols/mqtt_protocol.cc"
+    replace_once(
+        mqtt,
+        """        if (on_disconnected_ != nullptr) {
+            on_disconnected_();
+        }
+        ESP_LOGI(TAG, "MQTT disconnected, schedule reconnect in %d seconds",
+                 MQTT_RECONNECT_INTERVAL_MS / 1000);
+        esp_timer_start_once(reconnect_timer_, MQTT_RECONNECT_INTERVAL_MS * 1000);""",
+        """        // A broker disconnect invalidates the active UDP audio session.
+        // Close it so Application can return Listening/Speaking to Idle.
+        CloseAudioChannel(false);
+        if (on_disconnected_ != nullptr) {
+            on_disconnected_();
+        }
+        ESP_LOGI(TAG, "MQTT disconnected, schedule reconnect in %d seconds",
+                 MQTT_RECONNECT_INTERVAL_MS / 1000);
+        esp_timer_stop(reconnect_timer_);
+        esp_timer_start_once(reconnect_timer_, MQTT_RECONNECT_INTERVAL_MS * 1000);""",
+        "close stale UDP audio session when MQTT disconnects",
+    )
+    replace_once(
+        mqtt,
+        """                if (app.GetDeviceState() == kDeviceStateIdle) {
+                    ESP_LOGI(TAG, "Reconnecting to MQTT server");
+                    auto alive = protocol->alive_;  // Capture alive flag
+                    app.Schedule([protocol, alive]() {
+                        if (*alive) {
+                            protocol->StartMqttClient(false);
+                        }
+                    });
+                }""",
+        """                auto alive = protocol->alive_;
+                if (app.GetDeviceState() != kDeviceStateIdle) {
+                    // Retry later; do not replace the MQTT client during an active session.
+                    esp_timer_start_once(protocol->reconnect_timer_,
+                                         MQTT_RECONNECT_INTERVAL_MS * 1000);
+                    return;
+                }
+                ESP_LOGI(TAG, "Reconnecting to MQTT server");
+                app.Schedule([protocol, alive]() {
+                    if (!*alive) {
+                        return;
+                    }
+                    auto& current_app = Application::GetInstance();
+                    if (current_app.GetDeviceState() != kDeviceStateIdle) {
+                        esp_timer_start_once(protocol->reconnect_timer_,
+                                             MQTT_RECONNECT_INTERVAL_MS * 1000);
+                        return;
+                    }
+                    if (!protocol->StartMqttClient(false)) {
+                        ESP_LOGW(TAG, "MQTT reconnect failed; retry scheduled");
+                        esp_timer_start_once(protocol->reconnect_timer_,
+                                             MQTT_RECONNECT_INTERVAL_MS * 1000);
+                    }
+                });""",
+        "retain MQTT reconnect retries until device is idle and broker reconnects",
+    )
+
     manifest = source / "main/idf_component.yml"
     replace_once(
         manifest,
