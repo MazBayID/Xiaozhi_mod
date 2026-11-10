@@ -62,6 +62,51 @@ def main() -> None:
         "add Huy Vector C3 CMake board mapping",
     )
 
+    application = source / "main/application.cc"
+    replace_once(
+        application,
+        """    } else if (state == kDeviceStateListening) {
+        if (protocol_) {
+            protocol_->SendStopListening();
+        }
+        SetDeviceState(kDeviceStateIdle);
+    }
+}""",
+        """    } else if (state == kDeviceStateConnecting) {
+        // PTT may be released while the audio channel is still opening.
+        // Returning to idle invalidates the scheduled ContinueOpenAudioChannel()
+        // before it can start recording after the user has released the button.
+        ESP_LOGI(TAG, "PTT released while connecting; cancel pending listening start");
+        SetDeviceState(kDeviceStateIdle);
+    } else if (state == kDeviceStateListening) {
+        if (protocol_) {
+            protocol_->SendStopListening();
+        }
+        SetDeviceState(kDeviceStateIdle);
+    }
+}""",
+        "cancel PTT start when released during audio-channel connection",
+    )
+    replace_once(
+        application,
+        """    if (state == kDeviceStateConnecting || state == kDeviceStateListening ||
+        state == kDeviceStateSpeaking) {
+        ESP_LOGI(TAG, "Closing audio channel due to network disconnection");
+        protocol_->CloseAudioChannel();
+    }""",
+        """    if (state == kDeviceStateConnecting || state == kDeviceStateListening ||
+        state == kDeviceStateSpeaking) {
+        ESP_LOGI(TAG, "Closing audio channel due to network disconnection");
+        if (protocol_ != nullptr && protocol_->IsAudioChannelOpened()) {
+            protocol_->CloseAudioChannel();
+        }
+        // Do not leave the UI/audio state stuck in an active conversation.
+        // The next PTT press will open a fresh channel after Wi-Fi reconnects.
+        SetDeviceState(kDeviceStateIdle);
+    }""",
+        "guard protocol close and recover application state after network loss",
+    )
+
     manifest = source / "main/idf_component.yml"
     replace_once(
         manifest,
