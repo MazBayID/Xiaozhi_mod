@@ -10,16 +10,6 @@ UPSTREAM_ROOT = REPO_ROOT.parent / "upstream"
 if not UPSTREAM_ROOT.is_dir():
     raise SystemExit(f"Missing pinned upstream checkout: {UPSTREAM_ROOT}")
 
-# Generate only the idle and closed-eye frames before CMake discovers board
-# sources. The resulting C++ file is compiled from the board directory.
-generator_env = os.environ.copy()
-generator_env["MOCHI_BOARD_DIR"] = str(UPSTREAM_ROOT / "main/boards/huy-vector-c3")
-subprocess.run(
-    [sys.executable, str(REPO_ROOT / "scripts/generate_mochi_frames.py")],
-    check=True,
-    env=generator_env,
-)
-
 os.chdir(UPSTREAM_ROOT)
 sys.path.insert(0, str(UPSTREAM_ROOT / "scripts"))
 import build as upstream_build  # noqa: E402
